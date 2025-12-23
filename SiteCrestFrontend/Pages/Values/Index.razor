@@ -1,0 +1,62 @@
+﻿@page "/Values"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="text-center mb-3">Guideline Values</h1>
+
+<a class="btn btn-primary mb-3" href="/Values/Create">Add New Value</a>
+<a class="btn btn-primary mb-3" href="/Chemicals/Create">Add New Chemical</a>
+
+@if (chemicals == null)
+{
+    <h2><em>No chemicals has been added.</em></h2>
+}
+else
+{
+    <h6><em>Number of chemicals in the DB is @chemicals.Count</em></h6>
+        <div class="table-responsive">
+        <table class="table table-striped table-bordered table-sm small-table">
+            <thead>
+                <tr>
+                    <th>Chemical</th>
+                    @foreach (var path in pathways)
+                    {
+                        <th>@path.Name</th>
+                    }
+                    <th>Edit</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var chem in chemicals)
+                {
+                    <tr>
+                        <td>@chem.Name</td>
+
+                        @foreach (var path in pathways)
+                        {
+                            var val = chem.Values.FirstOrDefault(v => v.PathwayId == path.Id);
+                            <td>@(val != null ? val.Value.ToString() : "N/A")</td>
+                        }
+
+                        <td style="white-space:nowrap">
+                            <a class="btn btn-primary btn-sm" href="/Values/Edit/@chem.Id">Edit</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@inject IChemicalApi ChemicalsApi
+@inject IPathwayApi PathwayApi
+@code {
+    private List<ChemicalDto>? chemicals;
+    private List<PathwayDto>? pathways;
+
+    protected override async Task OnInitializedAsync()
+    {
+        chemicals = await ChemicalsApi.GetAllAsync() ?? [];
+        pathways = await PathwayApi.GetAllAsync() ?? [];
+    }
+}

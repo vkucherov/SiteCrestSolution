@@ -1,0 +1,72 @@
+﻿@page "/Chemicals/Edit/{id:int}"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<div class="row">
+    <div class="col-lg-8">
+        <h1 class="mb-5">Edit Chemical</h1>
+        @if (chemical == null)
+        {
+            <p><em>Chemical with Id = @Id does not exist</em></p>
+        }
+        else
+        {
+            <div class="row mb-3">
+                <label class="col-md-4 col-form-label">Chemical Id</label>
+                <div class="col-md-8">
+                    <input class="form-control-plaintext" value="@Id" />
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <label class="col-md-4 col-form-label">Chemical name</label>
+                <div class="col-md-8">
+                    <input class="form-control" @bind="chemical.ChemicalName" />
+                    <span class="text-danger">@Error</span>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="offset-md-4 col-md-4 d-grid">
+                    <button class="btn btn-primary" @onclick="SaveChemical">Submit</button>
+                </div>
+                <div class="col-md-4 d-grid">
+                    <a class="btn btn-outline-primary" href="/Chemicals">Cancel</a>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@inject IChemicalApi ChemicalsApi
+@inject NavigationManager NavManager
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public EditChemicalValuesDto? chemical = null;
+    string Error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            chemical = await ChemicalsApi.GetByIdAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+
+    protected async Task SaveChemical()
+    {
+        if (string.IsNullOrWhiteSpace(chemical.ChemicalName)) Error = "Please specify chemical name.";
+        else
+        {
+            var response = await ChemicalsApi.UpdateAsync(Id, chemical);
+            
+            if (response.IsSuccessStatusCode) NavManager.NavigateTo("/Chemicals");
+            else Error = await response.Content.ReadAsStringAsync();
+        }
+    }
+}

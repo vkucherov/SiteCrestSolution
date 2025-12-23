@@ -1,0 +1,38 @@
+﻿@page "/Chemicals/Delete/{Id:int}"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="mb-3">Delete Chemical</h1>
+<p>Are you sure you want to delete @Name</p>
+<span class="text-danger">@Error</span>
+<button class="btn btn-danger" @onclick="DeleteChemical">Delete</button>
+<a class="btn btn-secondary" href="/Chemicals">Cancel</a>
+
+@inject IChemicalApi ChemicalsApi
+@inject NavigationManager NavManager
+@code {
+    [Parameter]
+    public int Id { get; set; }
+    public EditChemicalValuesDto? chemical = null;
+    string Error;
+    string Name;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            chemical = await ChemicalsApi.GetByIdAsync(Id);
+            Name = chemical.ChemicalName ?? "empty name";
+        }
+        catch (Exception ex)
+        {
+            Error = ex.Message;
+        }
+    }
+    protected async Task DeleteChemical()
+    {
+        var response = await ChemicalsApi.DeleteAsync(Id);
+        if (response.IsSuccessStatusCode) NavManager.NavigateTo("/Chemicals");
+        else Error = await response.Content.ReadAsStringAsync();
+    }
+}

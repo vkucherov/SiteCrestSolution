@@ -1,0 +1,97 @@
+﻿@page "/Values/Edit/{ChemicalId:int}"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="mb-4">Edit Values</h1>
+
+@if (model == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <h4 class="mb-3">Chemical: <strong>@model.ChemicalName</strong></h4>
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Pathway</th>
+                <th style="width:200px;">Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var v in model.Values)
+            {
+                <tr>
+                    <td>@v.PathwayName</td>
+                    <td>
+                        <InputNumber class="form-control" @bind-Value="v.Value" />
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <span class="text-danger">@Error</span>
+
+    <div class="mt-3">
+        <button class="btn btn-primary" @onclick="Save">
+            Save Changes
+        </button>
+        <a class="btn btn-outline-secondary ms-2" href="/Values">
+            Cancel
+        </a>
+    </div>
+}
+
+@inject IChemicalApi ChemicalsApi
+@inject IPathwayApi PathwayApi
+@inject IValueApi ValueApi
+@inject NavigationManager NavManager
+@code {
+    [Parameter]
+    public int ChemicalId { get; set; }
+
+    private EditChemicalValuesDto? model;
+    private string? Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        model = await ChemicalsApi.GetByIdAsync(ChemicalId);
+
+        var allPathways = await PathwayApi.GetAllAsync() ?? [];
+
+        // merge: for each pathway, see if chemical already has a value
+        model = new EditChemicalValuesDto
+        {
+            ChemicalId = model.ChemicalId,
+            ChemicalName = model.ChemicalName,
+            Values = allPathways.Select(p =>
+            {
+                var existing = model.Values.FirstOrDefault(v => v.PathwayId == p.Id);
+                return new ChemicalPathwayDto
+                {
+                    PathwayId = p.Id,
+                    PathwayName = p.Name,
+                    Value = existing?.Value ?? 0
+                };
+            }).ToList()
+        };
+    }
+
+    private async Task Save()
+    {
+        var invalid = model.Values.Any(v => v.Value < 0);
+        if (invalid)
+        {
+            Error = "Values must be positive numbers.";
+            return;
+        }
+        var response = await ValueApi.UpdateValuesAsync(model);
+
+        if (response.IsSuccessStatusCode)
+            NavManager.NavigateTo("/Values");
+        else
+            Error = "Failed to save values.";
+    }
+}

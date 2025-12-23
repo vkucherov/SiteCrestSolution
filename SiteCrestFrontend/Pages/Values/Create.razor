@@ -1,0 +1,97 @@
+﻿@page "/Values/Create"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<div class="row">
+    <div class="col-lg-8">
+        <h1 class="mb-5">Add New Value</h1>
+
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Chemical</label>
+            <div class="col-md-8">
+                <select class="form-select" @bind="model.ChemicalId">
+                    <option value="">-- Select Chemical --</option>
+                    @foreach (var chem in chemicals)
+                    {
+                        <option value="@chem.Id">@chem.Name</option>
+                    }
+                </select>
+                
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Pathway</label>
+            <div class="col-md-8">
+                <select class="form-select" @bind="model.PathwayId">
+                    <option value="">-- Select Pathway --</option>
+                    @foreach (var path in pathways)
+                    {
+                        <option value="@path.Id">@path.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Value</label>
+            <div class="col-md-8">
+                <InputNumber class="form-control" @bind-Value="model.Value" />
+            </div>
+        </div>
+        <span class="text-danger">@Error</span>
+
+        <div class="row">
+            <div class="offset-md-4 col-md-4 d-grid">
+                <button class="btn btn-primary" @onclick="SaveValue">Submit</button>
+            </div>
+            <div class="col-md-4 d-grid">
+                <a class="btn btn-outline-primary" href="/Chemicals">Cancel</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+@inject IChemicalApi ChemicalsApi
+@inject IPathwayApi PathwayApi
+@inject IValueApi ValueApi
+@inject NavigationManager NavManager
+@code {
+    private List<ChemicalDto> chemicals = new();
+    private List<PathwayDto> pathways = new();
+
+    private CreateChemicalPathwayValueDto model = new();
+    private string Error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        chemicals = await ChemicalsApi.GetAllAsync() ?? [];
+
+        pathways = await PathwayApi.GetAllAsync() ?? [];
+    }
+
+    private async Task SaveValue()
+    {
+        var dto = new EditChemicalValuesDto
+        {
+            ChemicalId = model.ChemicalId,
+            Values = new List<ChemicalPathwayDto>
+            {
+                new() { PathwayId = model.PathwayId, Value = model.Value }
+            }
+        };
+
+        var response = await ValueApi.UpdateValuesAsync(dto);
+
+        if (response.IsSuccessStatusCode)
+        {
+            NavManager.NavigateTo("/Values");
+        }
+        else
+        {
+            Error = "Failed to save value.";
+        }
+    }
+}

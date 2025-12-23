@@ -1,0 +1,48 @@
+﻿@page "/Chemicals"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="text-center mb-3">List of known Chemicals</h1>
+
+<a class="btn btn-primary mb-3" href="/Chemicals/Create">Add New Chemical</a>
+
+@if (chemicals == null)
+{
+    <h2><em>Loading chemicals...</em></h2>
+}
+else
+{
+    <h6><em>Number of chemicals in the DB is @chemicals.Count</em></h6>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Chemical</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var chemical in chemicals)
+            {
+                <tr>
+                    <td>@chemical.Id</td>
+                    <td>@chemical.Name</td>
+                    <td style="white-space:nowrap">
+                        <a class="btn btn-primary btn-sm" href="/Chemicals/Edit/@chemical.Id">Edit</a>
+                        <a class="btn btn-danger btn-sm" href="/Chemicals/Delete/@chemical.Id">Delete</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@inject IChemicalApi ChemicalsApi
+@code {
+    private List<ChemicalDto>? chemicals;
+
+    protected override async Task OnInitializedAsync()
+    {
+        chemicals = await ChemicalsApi.GetAllAsync() ?? [];
+    }
+}

@@ -1,0 +1,229 @@
+﻿@page "/Calculator/"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="text-center mb-3">Guideline Evaluation (Calculator)</h1>
+
+<div class="row">
+    <div class="col-lg-8">
+
+        <!-- Chemical selection -->
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Chemical</label>
+            <div class="col-md-8">
+                <select class="form-select" value="model.ChemicalId" @onchange="OnChemicalChanged">
+                    <option value="">-- Select Chemical --</option>
+                    @foreach (var chem in chemicals)
+                    {
+                        <option value="@chem.Id">@chem.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <!-- Measured value input -->
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Measured Concentration Value</label>
+            <div class="col-md-8">
+                <InputNumber class="form-control" @bind-Value="model.MeasuredValue" min="0" />
+            </div>
+        </div>
+
+        <!-- Exposure pathways selection -->
+        <div class="row mb-3">
+            <label class="col-md-4 col-form-label">Exposure Pathways</label>
+
+            <div class="col-md-8">
+
+                <!-- Select all -->
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox"
+                           checked="@AreAllPathwaysSelected"
+                           @onchange="ToggleAllPathways" />
+                    <label class="form-check-label fw-bold">
+                        Select all
+                    </label>
+                </div>
+
+                @foreach (var path in pathways)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox"
+                               value="@path.Id"
+                               checked="@model.SelectedPathwayIds.Contains(path.Id)"
+                               @onchange="e => OnPathwayChecked(e, path.Id)" />
+                        <label class="form-check-label">@path.Name</label>
+                    </div>
+                }
+            </div>
+        </div>
+
+
+        <span class="text-danger">@Error</span>
+
+        <!-- Submit button -->
+        <div class="row">
+            <div class="offset-md-4 col-md-4 d-grid">
+                <button class="btn btn-primary" @onclick="Calculate">Submit</button>
+            </div>
+        </div>
+
+        <!-- Results table -->
+        @if (results.Any())
+        {
+            <h4 class="mt-4">Results</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Pathway</th>
+                        <th>Guideline Value</th>
+                        <th>Measured Value</th>
+                        <th>Result</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in results)
+                    {
+                        <tr>
+                            <td>@r.PathwayName</td>
+                            <td>@r.Guideline</td>
+                            <td>@r.Measured</td>
+                            <td>
+                                @if (r.Measured > r.Guideline)
+                                {
+                                    <span class="text-danger">Above guideline</span>
+                                }
+                                else if (r.Measured < r.Guideline)
+                                {
+                                    <span class="text-success">Below guideline</span>
+                                }
+                                else
+                                {
+                                    <span class="text-warning">At guideline</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <p><strong>Lowest applicable guideline value:</strong> @lowestGuideline</p>
+        }
+    </div>
+</div>
+
+@inject IChemicalApi ChemicalsApi
+@inject IPathwayApi PathwayApi
+@code {
+    // Models
+    private class CalculatorModel
+    {
+        public int ChemicalId { get; set; }
+        public double MeasuredValue { get; set; }
+        public List<int> SelectedPathwayIds { get; set; } = new();
+        public EditChemicalValuesDto? GuidelineData { get; set; }
+    }
+
+    private CalculatorModel model = new();
+    private List<ChemicalDto> chemicals = new();
+    private List<PathwayDto> pathways = new();
+    private List<(string PathwayName, double Guideline, double Measured)> results = new();
+    private double? lowestGuideline;
+    private string Error;
+
+    [Inject] private HttpClient Http { get; set; } = null!;
+    [Inject] private NavigationManager NavManager { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        chemicals = await ChemicalsApi.GetAllAsync() ?? [];
+        pathways = await PathwayApi.GetAllAsync() ?? [];
+    }
+
+    // When chemical selection changes, fetch guideline values
+    private async Task OnChemicalChanged(ChangeEventArgs e)
+    {
+        model.ChemicalId = int.Parse(e.Value?.ToString() ?? "0");
+
+        if (model.ChemicalId == 0)
+        {
+            model.GuidelineData = null;
+            results.Clear();
+            return;
+        }
+
+        model.GuidelineData = await ChemicalsApi.GetByIdAsync(model.ChemicalId);    
+        results.Clear();
+        model.SelectedPathwayIds.Clear();
+    }
+
+    bool AreAllPathwaysSelected =>
+    pathways.All(p => model.SelectedPathwayIds.Contains(p.Id));
+
+    void ToggleAllPathways(ChangeEventArgs e)
+    {
+        var isChecked = (bool)e.Value!;
+
+        if (isChecked)
+        {
+            model.SelectedPathwayIds = pathways
+                .Select(p => p.Id)
+                .ToList();
+        }
+        else
+        {
+            model.SelectedPathwayIds.Clear();
+        }
+    }
+
+    private void OnPathwayChecked(ChangeEventArgs e, int pathwayId)
+    {
+        bool isChecked = (bool)e.Value;
+        if (isChecked)
+        {
+            if (!model.SelectedPathwayIds.Contains(pathwayId))
+                model.SelectedPathwayIds.Add(pathwayId);
+        }
+        else
+        {
+            model.SelectedPathwayIds.Remove(pathwayId);
+        }
+    }
+
+    private void Calculate()
+    {
+        if (model.ChemicalId == 0)
+        {
+            Error = "Please select a chemical.";
+            return;
+        }
+
+        if (model.MeasuredValue <= 0)
+        {
+            Error = "Please enter a positive measured value.";
+            return;
+        }
+
+        if (model.SelectedPathwayIds.Count == 0)
+        {
+            // default: all pathways
+            model.SelectedPathwayIds = pathways.Select(p => p.Id).ToList();
+        }
+
+        var selectedGuidelines = model.GuidelineData!.Values
+            .Where(v => model.SelectedPathwayIds.Contains(v.PathwayId))
+            .Where(v => v.Value > 0)
+            .ToList();
+
+        if (selectedGuidelines.Count == 0)
+        {
+            Error = $"No guidelines for {model.GuidelineData.ChemicalName} are available.";
+            return;
+        }
+
+        results = selectedGuidelines
+            .Select(v => (v.PathwayName, v.Value, model.MeasuredValue))
+            .ToList();
+
+        lowestGuideline = results.Any() ? results.Min(r => r.Guideline) : null;
+    }
+}

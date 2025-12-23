@@ -1,0 +1,43 @@
+﻿@page "/Pathways"
+@using Contracts
+@using SiteCrestFrontend.API
+
+<h1 class="text-center mb-3">List of Pathways</h1>
+
+@if (pathways == null)
+{
+    <h2><em>Loading pathways...</em></h2>
+}
+else
+{
+    <h6><em>Number of pathways in the DB is @pathways.Count</em></h6>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Sort Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var pathway in pathways)
+            {
+                <tr>
+                    <td>@pathway.Id</td>
+                    <td>@pathway.DisplayName</td>
+                    <td>@pathway.SortValue</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@inject IPathwayApi PathwayApi
+@code {
+    private List<PathwayDto>? pathways;
+
+    protected override async Task OnInitializedAsync()
+    {
+        pathways = await PathwayApi.GetAllAsync() ?? [];
+    }
+}
