@@ -3,7 +3,7 @@
     public class PathwayDto
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public SoilTextureDto Soil { get; set; }
 
         public int SortValue { get; set; }

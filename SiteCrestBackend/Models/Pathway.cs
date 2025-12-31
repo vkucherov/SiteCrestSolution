@@ -4,7 +4,7 @@
     public class Pathway
     {
         public int Id { get; set; }
-        public string Name { get; set; }
+        public string? Name { get; set; }
         public SoilTexture Soil {  get; set; }
 
         public int SortValue { get; set; }
