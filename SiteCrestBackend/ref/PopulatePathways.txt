@@ -1,4 +1,4 @@
-﻿INSERT INTO [ChemicalsDirectory].[dbo].[Pathways] (Name, Soil, SortValue)
+﻿INSERT INTO [sql-db-site-crest].[dbo].[Pathways] (Name, Soil, SortValue)
 VALUES
 -- Overall Guideline
 ('Overall Guideline', 0, 5),
